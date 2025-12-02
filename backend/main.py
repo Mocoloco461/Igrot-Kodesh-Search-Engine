@@ -2,8 +2,10 @@ import os
 import json
 import glob
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -79,7 +81,10 @@ def load_data():
 async def startup_event():
     load_data()
 
-@app.get("/search")
+# API Router
+api_router = APIRouter()
+
+@api_router.get("/search")
 async def search(
     q: str = Query(..., min_length=1),
     page: int = 1,
@@ -91,7 +96,6 @@ async def search(
     
     if exact:
         # Exact match (whole word or phrase)
-        # Note: This is a simple substring match for now, can be improved for strict word boundaries if needed
         mask = DF['clean_text'].str.contains(q, case=False, regex=False)
     else:
         # Contains
@@ -135,18 +139,34 @@ async def search(
         "results": results
     }
 
-@app.get("/letter/{letter_id}")
+@api_router.get("/letter/{letter_id}")
 async def get_letter(letter_id: str):
-    # Find letter by ID
-    # Since we have a list, we can just search or use a dict lookup if optimized
-    # For now, simple lookup
-    
-    # Parse vol and index from ID to be faster if we stored it that way, 
-    # but let's just use the dataframe or list
-    
     letter = next((item for item in LETTERS_DB if item["id"] == letter_id), None)
     
     if not letter:
         raise HTTPException(status_code=404, detail="Letter not found")
         
     return letter
+
+# Include API router
+app.include_router(api_router, prefix="/api")
+
+# Serve Static Files
+# We expect the frontend build to be in 'static' directory relative to this file
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+
+if os.path.exists(static_dir):
+    app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
+    
+    # Catch-all for SPA
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Check if file exists in static (e.g. favicon.ico)
+        file_path = os.path.join(static_dir, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        
+        # Otherwise return index.html
+        return FileResponse(os.path.join(static_dir, "index.html"))
+else:
+    print(f"Warning: Static directory {static_dir} not found. Frontend will not be served.")

@@ -4,3 +4,4 @@ pandas
 python-multipart
 beautifulsoup4
 lxml
+aiofiles
