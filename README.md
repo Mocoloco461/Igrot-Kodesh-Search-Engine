@@ -47,3 +47,14 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## Deployment on Railway / פריסה ב-Railway
+
+1. **Push to GitHub:** Upload your code to a GitHub repository.
+2. **Connect Railway:** Create a new project in Railway and select "Deploy from GitHub repo".
+3. **Configuration:** Railway will automatically detect the `railway.json` or `Procfile`.
+   - Ensure the `PORT` environment variable is set (Railway does this automatically).
+   - **Important:** Since this is a monorepo (frontend + backend), for a simple deployment, you might want to deploy the backend service first.
+   - For a full deployment (Frontend + Backend), it is recommended to create two services in Railway:
+     1. **Backend:** Point to the `backend` directory (Root Directory: `backend`).
+     2. **Frontend:** Point to the `frontend` directory (Root Directory: `frontend`).
